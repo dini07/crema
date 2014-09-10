@@ -1,11 +1,11 @@
 package com.cremamobile.filemanager.treeview;
 
 import java.util.Arrays;
+
 import java.util.List;
 import java.util.Set;
 
 import com.cremamobile.filemanager.utils.CLog;
-
 import com.cremamobile.filemanager.R;
 import android.app.Activity;
 import android.content.Context;
@@ -42,9 +42,11 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
     private int indentWidth = 0;
     private int indicatorGravity = 0;
     private Drawable rootCollapsedDrawable;
-    private Drawable rootExpendedDrawable;
-    private Drawable collapsedDrawable;
-    private Drawable expandedDrawable;
+    private Drawable rootExpandedDrawable;
+    private Drawable directoryCollapsedDrawable;
+    private Drawable directoryExpandedDrawable;
+    private Drawable indicatorCollapsedDrawable;
+    private Drawable indicatorExpandedDrawable;
     private Drawable indicatorBackgroundDrawable;
     private Drawable rowBackgroundDrawable;
 
@@ -86,16 +88,16 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
     	return info.isNeedSearchChild();
     }
     
-    private void calculateIndentWidth() {
-        if (expandedDrawable != null) {
-            indentWidth = Math.max(getIndentWidth(),
-                    expandedDrawable.getIntrinsicWidth());
-        }
-        if (collapsedDrawable != null) {
-            indentWidth = Math.max(getIndentWidth(),
-                    collapsedDrawable.getIntrinsicWidth());
-        }
-    }
+//    private void calculateIndentWidth() {
+//        if (expandedDrawable != null) {
+//            indentWidth = Math.max(getIndentWidth(),
+//                    expandedDrawable.getIntrinsicWidth());
+//        }
+//        if (collapsedDrawable != null) {
+//            indentWidth = Math.max(getIndentWidth(),
+//                    collapsedDrawable.getIntrinsicWidth());
+//        }
+//    }
     
     public TreeViewAdapter(final Activity activity, final TreeViewAdapterParent<Long> parent, 
     		final TreeStateManager<Long> treeStateManager, 
@@ -108,11 +110,13 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
         this.numberOfRoot = numberOfRoot;
         this.numberOfLevels = numberOfLevels;
         this.rootCollapsedDrawable = null;
-        this.rootExpendedDrawable = null;
-        this.collapsedDrawable = null;
-        this.expandedDrawable = null;
-        this.rowBackgroundDrawable = null;
+        this.rootExpandedDrawable = null;
+        this.directoryCollapsedDrawable = null;
+        this.directoryExpandedDrawable = null;
+        this.indicatorCollapsedDrawable = null;
+        this.indicatorExpandedDrawable = null;
         this.indicatorBackgroundDrawable = null;
+        this.rowBackgroundDrawable = null;
     }
     
     public TreeViewAdapter(final Activity activity,
@@ -126,11 +130,13 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
         this.numberOfRoot = 1;	//default
         this.numberOfLevels = numberOfLevels;
         this.rootCollapsedDrawable = null;
-        this.rootExpendedDrawable = null;
-        this.collapsedDrawable = null;
-        this.expandedDrawable = null;
-        this.rowBackgroundDrawable = null;
+        this.rootExpandedDrawable = null;
+        this.directoryCollapsedDrawable = null;
+        this.directoryExpandedDrawable = null;
+        this.indicatorCollapsedDrawable = null;
+        this.indicatorExpandedDrawable = null;
         this.indicatorBackgroundDrawable = null;
+        this.rowBackgroundDrawable = null;
     }
 
     @Override
@@ -195,20 +201,17 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
         return true;
     }
 
-    protected int getTreeListItemWrapperId() {
-        return R.layout.tree_list_item_wrapper;
-    }
-
     @Override
     public final View getView(final int position, final View convertView,
             final ViewGroup parent) {
     	CLog.d(this, "Creating a view based on " + convertView
                 + " with position " + position);
+    	
         final TreeNodeInfo<Long> nodeInfo = getTreeNodeInfo(position);
+
         if (convertView == null) {
         	CLog.d(this, "Creating the view a new");
-            final LinearLayout layout = (LinearLayout) layoutInflater.inflate(
-                    getTreeListItemWrapperId(), null);
+            final LinearLayout layout = (LinearLayout) layoutInflater.inflate(R.layout.tree_list_item_wrapper, null);
             return populateTreeItem(layout, getNewChildView(nodeInfo),
                     nodeInfo, true);
         } else {
@@ -231,7 +234,7 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
     public View updateView(View view, TreeNodeInfo<Long> treeNodeInfo) {
         final LinearLayout viewLayout = (LinearLayout) view;
         final TextView descriptionView = (TextView) viewLayout
-                .findViewById(R.id.demo_list_item_description);
+                .findViewById(R.id.treeview_list_item_description);
         descriptionView.setText(treeNodeInfo.getName());
         return viewLayout;
     }
@@ -257,36 +260,82 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
         }
     }
 
+    private Drawable getIndicateDrawable(final TreeNodeInfo<Long> treeNode) {
+    	if (treeNode.isRoot() || treeNode.isNeedSearchChild() || treeNode.isWithChildren()) {
+    		if (treeNode.isExpanded()) {
+    			return directoryExpandedDrawable;
+    		} else {
+    			return directoryExpandedDrawable;
+    		}
+    	} else {
+    		return getDrawableOrDefaultBackground(null);
+    	}
+    }
+
+    private Drawable getFolderDrawable(final TreeNodeInfo<Long> treeNode) {
+    	if (treeNode.isRoot()) {
+    		if (treeNode.isExpanded()) {
+    			return rootExpandedDrawable;
+    		} else {
+    			return rootCollapsedDrawable;
+    		}
+    	} else if (treeNode.isNeedSearchChild() || treeNode.isWithChildren()) {
+    		if (treeNode.isExpanded()) {
+    			return directoryExpandedDrawable;
+    		} else {
+    			return directoryExpandedDrawable;
+    		}
+    	} else {
+    		return getDrawableOrDefaultBackground(null);
+    	}
+    }
+
     public final LinearLayout populateTreeItem(final LinearLayout layout,
             final View childView, final TreeNodeInfo<Long> nodeInfo,
             final boolean newChildView) {
     	// 전체 영역 클릭 시 동작시킨다.
     	//final View itemLayout = layout.findViewById(R.id.treeview_list_item_frame);
     	
+    	layout.setTag(nodeInfo.getId());
+    	
+    	// background 
         final Drawable individualRowDrawable = getBackgroundDrawable(nodeInfo);
         layout.setBackgroundDrawable(individualRowDrawable == null ? getDrawableOrDefaultBackground(rowBackgroundDrawable)
                 : individualRowDrawable);
-        final LinearLayout.LayoutParams indicatorLayoutParams = new LinearLayout.LayoutParams(
+
+    	final Drawable indicatDrawable = getIndicateDrawable(nodeInfo);
+    	final Drawable folderDrawable = getFolderDrawable(nodeInfo);
+
+        final LinearLayout.LayoutParams indentLayoutParam = new LinearLayout.LayoutParams(
                 calculateIndentation(nodeInfo), LayoutParams.FILL_PARENT);
-        final LinearLayout indicatorLayout = (LinearLayout) layout
-                .findViewById(R.id.treeview_list_item_image_layout);
+        
+        final LinearLayout indentLayout = (LinearLayout) layout
+                .findViewById(R.id.treeview_list_indent);
 //        indicatorLayout.setOnClickListener(itemClickListener);
-        indicatorLayout.setGravity(indicatorGravity);
-        indicatorLayout.setLayoutParams(indicatorLayoutParams);
-        indicatorLayout.setTag(nodeInfo.getId());
-        final ImageView image = (ImageView) layout
-                .findViewById(R.id.treeview_list_item_collapse_image);
-        image.setImageDrawable(getDrawable(nodeInfo));
-        image.setClickable(false);
-        image.setBackgroundDrawable(getDrawableOrDefaultBackground(indicatorBackgroundDrawable));
-        image.setScaleType(ScaleType.CENTER);
+        indentLayout.setGravity(indicatorGravity);
+        indentLayout.setLayoutParams(indentLayoutParam);
+        indentLayout.setTag(nodeInfo.getId());
+        
+        // ChildView에서 indicator icon, folder icon, text를 설정한다. 
+        
+        final ImageView indicateImageView = (ImageView) childView.findViewById(R.id.treeview_list_item_indicator_image);
+        indicateImageView.setImageDrawable(getIndicateDrawable(nodeInfo));
+        indicateImageView.setClickable(false);
+        indicateImageView.setBackgroundDrawable(getDrawableOrDefaultBackground(indicatorBackgroundDrawable));
+        indicateImageView.setScaleType(ScaleType.CENTER);
+        
+        final ImageView folderImageView = (ImageView) childView.findViewById(R.id.treeview_list_item_folder_image);
+        folderImageView.setImageDrawable(getFolderDrawable(nodeInfo));
+        folderImageView.setClickable(false);
+        folderImageView.setBackgroundDrawable(getDrawableOrDefaultBackground(indicatorBackgroundDrawable));
+        folderImageView.setScaleType(ScaleType.CENTER);
 //        image.setTag(nodeInfo.getId());
 //        if (nodeInfo.isWithChildren() && collapsible) {
 //            image.setOnClickListener(indicatorClickListener);
 //        } else {
 //            image.setOnClickListener(null);
 //        }
-        layout.setTag(nodeInfo.getId());
+        
         final FrameLayout frameLayout = (FrameLayout) layout
                 .findViewById(R.id.treeview_list_item_frame);
         final FrameLayout.LayoutParams childParams = new FrameLayout.LayoutParams(
@@ -299,25 +348,28 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
     }
 
     protected int calculateIndentation(final TreeNodeInfo<Long> nodeInfo) {
-    	return getIndentWidth() * (nodeInfo.getLevel() + (collapsible ? 1 : 0));
+    	return getIndentWidth() * (nodeInfo.getLevel()+1);
     }
 
-    protected Drawable getDrawable(final TreeNodeInfo<Long> nodeInfo) {
-    	if (nodeInfo.isRoot()) {
-    		if (nodeInfo.isExpanded())
-    			return rootExpendedDrawable;
-    		else
-    			return rootCollapsedDrawable;
-    	}
-        if (!nodeInfo.isWithChildren() || !collapsible) {
-            return getDrawableOrDefaultBackground(indicatorBackgroundDrawable);
-        }
-        if (nodeInfo.isExpanded()) {
-            return expandedDrawable;
-        } else {
-            return collapsedDrawable;
-        }
-    }
+//    protected Drawable getDrawable(final TreeNodeInfo<Long> nodeInfo) {
+//    	// Device 정보  Node 일 경우는 device관련 image표시 
+//    	if (nodeInfo.isRoot()) {
+//    		if (nodeInfo.isExpanded())
+//    			return rootExpendedDrawable;
+//    		else
+//    			return rootCollapsedDrawable;
+//    	}
+//    	// Child가 이미 존재하거나, 곧 존재할 Node 일 경우에는 Directory 관련 이미지 표시
+//    	if (nodeInfo.isWithChildren() || nodeInfo.isNeedSearchChild()) {
+//    		if (nodeInfo.isExpanded()) {
+//                return expandedDrawable;
+//    		} else {
+//                return collapsedDrawable;
+//    		}
+//    	}
+//    	
+//    	return getDrawableOrDefaultBackground(indicatorBackgroundDrawable);
+//    }
 
     public void setIndicatorGravity(final int indicatorGravity) {
         this.indicatorGravity = indicatorGravity;
@@ -325,35 +377,45 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
 
     public void setRootCollapsedDrawable(final Drawable rootDrawable) {
     	this.rootCollapsedDrawable = rootDrawable;
-    	calculateIndentWidth();
+//    	calculateIndentWidth();
     }
     
-    public void setRootExpendedDrawable(final Drawable rootExpendedDrawable) {
-    	this.rootExpendedDrawable = rootExpendedDrawable;
-    	calculateIndentWidth();
+    public void setRootExpandedDrawable(final Drawable rootExpendedDrawable) {
+    	this.rootExpandedDrawable = rootExpendedDrawable;
+//    	calculateIndentWidth();
     }
-    public void setCollapsedDrawable(final Drawable collapsedDrawable) {
-        this.collapsedDrawable = collapsedDrawable;
-        calculateIndentWidth();
-    }
-
-    public void setExpandedDrawable(final Drawable expandedDrawable) {
-        this.expandedDrawable = expandedDrawable;
-        calculateIndentWidth();
+    public void setDirectoryCollapsedDrawable(final Drawable collapsedDrawable) {
+        this.directoryCollapsedDrawable = collapsedDrawable;
+//        calculateIndentWidth();
     }
 
-    public void setIndentWidth(final int indentWidth) {
-        this.indentWidth = indentWidth;
-        calculateIndentWidth();
+    public void setDirectoryExpandedDrawable(final Drawable expandedDrawable) {
+        this.directoryExpandedDrawable = expandedDrawable;
+//        calculateIndentWidth();
     }
 
-    public void setRowBackgroundDrawable(final Drawable rowBackgroundDrawable) {
-        this.rowBackgroundDrawable = rowBackgroundDrawable;
+    public void setIndicatorCollapsedDrawable(final Drawable collapsedDrawable) {
+        this.indicatorCollapsedDrawable = collapsedDrawable;
+//        calculateIndentWidth();
+    }
+
+    public void setIndicatorExpandedDrawable(final Drawable expandedDrawable) {
+        this.indicatorExpandedDrawable = expandedDrawable;
+//        calculateIndentWidth();
     }
 
     public void setIndicatorBackgroundDrawable(
             final Drawable indicatorBackgroundDrawable) {
         this.indicatorBackgroundDrawable = indicatorBackgroundDrawable;
+    }
+
+    public void setIndentWidth(final int indentWidth) {
+        this.indentWidth = indentWidth;
+//        calculateIndentWidth();
+    }
+
+    public void setRowBackgroundDrawable(final Drawable rowBackgroundDrawable) {
+        this.rowBackgroundDrawable = rowBackgroundDrawable;
     }
 
     public void setCollapsible(final boolean collapsible) {
@@ -386,14 +448,17 @@ public class TreeViewAdapter extends BaseAdapter implements ListAdapter {
 
     	expandCollapse((Long) id);
 
-        List<Long> children = treeStateManager.getChildren(longId);
-        if (children != null || children.size() > 0) {
-        	for (Long childId : children) {
-                TreeNodeInfo<Long> childInfo = treeStateManager.getNodeInfo(childId);
-                if (childInfo.isNeedSearchChild())
-                	adapterParent.updateChildList(childId, childInfo.getPaht());
-        	}
-        }
+//        List<Long> children = treeStateManager.getChildren(longId);
+//        if (children != null || children.size() > 0) {
+//        	for (Long childId : children) {
+//                TreeNodeInfo<Long> childInfo = treeStateManager.getNodeInfo(childId);
+//                if (childInfo.isNeedSearchChild())
+//                	adapterParent.updateChildList(childId, childInfo.getPaht());
+//        	}
+//        }
+        
+        TreeNodeInfo<Long> nodeInfo = treeStateManager.getNodeInfo(longId);
+        adapterParent.updateChildList(longId, nodeInfo.getPaht(), nodeInfo.isNeedSearchChild());
 
 
 //        if (info.isWithChildren()) {

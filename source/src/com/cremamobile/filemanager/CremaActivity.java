@@ -1,10 +1,20 @@
 package com.cremamobile.filemanager;
 
+import java.io.File;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
+import java.util.Stack;
+
+import com.cremamobile.filemanager.file.FileListEntry;
+import com.cremamobile.filemanager.file.FileLister;
+import com.cremamobile.filemanager.file.FileSorter;
 import com.cremamobile.filemanager.file.FindHistory;
-import com.cremamobile.filemanager.receiver.ExternalMountBroadcastReceiver;
+import com.cremamobile.filemanager.gridview.FileListAdapter;
+import com.cremamobile.filemanager.history.HistoryNode;
 import com.cremamobile.filemanager.service.*;
+import com.cremamobile.filemanager.settingview.SlideAnimationLayout;
 import com.google.analytics.tracking.android.EasyTracker;
 
 import android.app.Activity;
@@ -30,10 +40,18 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.support.v4.widget.DrawerLayout;
 import android.text.TextUtils;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.GridView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import com.cremamobile.filemanager.IRemoteService;
@@ -41,8 +59,17 @@ import com.cremamobile.filemanager.IRemoteServiceCallback;
 import com.cremamobile.filemanager.R;
 
 public class CremaActivity extends ActionBarActivity implements
-		NavigationDrawerFragment.NavigationDrawerCallbacks {
+	NavigationDrawerFragment.NavigationDrawerCallbacks {
 
+	public static final int BUTTON_ID_COPY = 1011;
+	public static final int BUTTON_ID_MOVE = 1012;
+	public static final int BUTTON_ID_RENAME = 1013;
+	public static final int BUTTON_ID_NEW_FOLDER = 1014;
+	public static final int BUTTON_ID_SORT = 1015;
+	public static final int BUTTON_ID_SHARE = 1016;
+	public static final int BUTTON_ID_REFRESH = 1017;
+	public static final int BUTTON_ID_SETTING = 1018;
+	
 	/**
 	 * Fragment managing the behaviors, interactions and presentation of the
 	 * navigation drawer.
@@ -55,6 +82,67 @@ public class CremaActivity extends ActionBarActivity implements
 	 */
 	private CharSequence mTitle;
 
+	
+	private static Stack<HistoryNode>  mHistoryStack;
+	
+	
+	private static String mCurrentPath;
+	private static int mCurrentSelectedItem;
+	private static int mWorkMode;
+	private static int mViewMode;
+	
+	private static GridView	mMainGrid;
+	private static ListView mMainList;
+	
+	private static FileListAdapter mFileAdapter;
+	
+	/**
+	 * Option Menu ...
+	 */
+	private static View settingView;
+	private OnClickListener settingMenuClickListener = new OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			// TODO Auto-generated method stub
+			
+			settingView.setVisibility(View.GONE);
+			
+			int id = v.getId();
+			switch(id) {
+			case R.id.setting_copy:
+				break;
+			case R.id.setting_move:
+				break;
+			case R.id.setting_rename:
+				break;
+			case R.id.setting_newfolder:
+				break;
+			case R.id.setting_sort:
+				break;
+			case R.id.setting_share:
+				break;
+			case R.id.setting_refresh:
+				setting_refresh();
+				break;
+			case R.id.setting_setting:
+				setting_setting();
+				break;
+			}
+		}
+		
+	};
+	
+	private void setting_refresh() {
+		mCurrentSelectedItem = 0;
+		setCurrentViewPerPath(mCurrentPath, mCurrentSelectedItem, false);
+	}
+	
+	private void setting_setting() {
+		Intent intent = new Intent(this, SettingActivity.class);
+		startActivity(intent);
+	}
+	
 	/**
 	 * mount sdcard ..etc..
 	 */
@@ -74,6 +162,18 @@ public class CremaActivity extends ActionBarActivity implements
 		mNavigationDrawerFragment.setUp(R.id.navigation_drawer,
 				(DrawerLayout) findViewById(R.id.drawer_layout));
 		
+		FragmentManager fragmentManager = getSupportFragmentManager();
+		fragmentManager
+				.beginTransaction()
+				.replace(R.id.container,
+						PlaceholderFragment.newInstance(1)).commit();
+		
+		View v = getLayoutInflater().inflate(R.layout.actionbar_idle, null);
+		
+		ActionBar ab = getSupportActionBar();
+		ab.setCustomView(v);
+		ab.setDisplayOptions(ActionBar.DISPLAY_SHOW_HOME | ActionBar.DISPLAY_SHOW_TITLE | ActionBar.DISPLAY_SHOW_CUSTOM);
+		restoreActionBar();
 		
 		// Start Service
 		Intent intent = new Intent("com.cremamobile.filemanager.IRemoteService");
@@ -111,13 +211,17 @@ public class CremaActivity extends ActionBarActivity implements
 	}
 	
 	@Override
-	public void onNavigationDrawerItemSelected(int position) {
+	public void onNavigationDrawerItemSelected(long position, String path) {
 		// update the main content by replacing fragments
-		FragmentManager fragmentManager = getSupportFragmentManager();
-		fragmentManager
-				.beginTransaction()
-				.replace(R.id.container,
-						PlaceholderFragment.newInstance(position + 1)).commit();
+//		FragmentManager fragmentManager = getSupportFragmentManager();
+//		fragmentManager
+//				.beginTransaction()
+//				.replace(R.id.container,
+//						PlaceholderFragment.newInstance(position + 1)).commit();
+		if (path == null)
+			return;
+		
+		setCurrentViewPerPath(path, 0, true);
 	}
 
 	public void onSectionAttached(int number) {
@@ -142,18 +246,18 @@ public class CremaActivity extends ActionBarActivity implements
 		actionBar.setTitle(mTitle);
 	}
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		if (!mNavigationDrawerFragment.isDrawerOpen()) {
-			// Only show items in the action bar relevant to this screen
-			// if the drawer is not showing. Otherwise, let the drawer
-			// decide what to show in the action bar.
-			getMenuInflater().inflate(R.menu.crema, menu);
-			restoreActionBar();
-			return true;
-		}
-		return super.onCreateOptionsMenu(menu);
-	}
+//	@Override
+//	public boolean onCreateOptionsMenu(Menu menu) {
+//		if (!mNavigationDrawerFragment.isDrawerOpen()) {
+//			// Only show items in the action bar relevant to this screen
+//			// if the drawer is not showing. Otherwise, let the drawer
+//			// decide what to show in the action bar.
+//			getMenuInflater().inflate(R.menu.crema, menu);
+//			restoreActionBar();
+//			return true;
+//		}
+//		return super.onCreateOptionsMenu(menu);
+//	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -162,7 +266,7 @@ public class CremaActivity extends ActionBarActivity implements
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
 		if (id == R.id.action_settings) {
-			return true;
+			settingView.setVisibility(View.GONE);
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -196,6 +300,29 @@ public class CremaActivity extends ActionBarActivity implements
 				Bundle savedInstanceState) {
 			View rootView = inflater.inflate(R.layout.fragment_main, container,
 					false);
+			
+			settingView = rootView.findViewById(R.id.layout_settings);
+			SlideAnimationLayout slideView = (SlideAnimationLayout) settingView.findViewById(R.id.layout_settingButtons);
+			slideView.createAnimation();
+			settingMenuInitialize(slideView);
+
+			
+			mMainGrid = (GridView) rootView.findViewById(R.id.layout_grid);
+			List<FileListEntry> files = FileLister.getFileLists(mCurrentPath, false);
+			
+			if (files != null) {
+				Collections.sort(files, new FileSorter(getActivity().getApplicationContext(), true, FileSorter.SORT_BY_NAME_ASC));
+			}
+			
+			mFileAdapter = new FileListAdapter(getActivity().getApplicationContext(), files);
+			mMainGrid.setAdapter(mFileAdapter);
+			mMainGrid.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> parent, View view,
+						int position, long id) {
+					// TODO Auto-generated method stub
+				}
+            });
 			return rootView;
 		}
 
@@ -302,5 +429,114 @@ public class CremaActivity extends ActionBarActivity implements
 	    this.registerReceiver(mReceiver, intentFilter);
 	    
 	    //<data android:scheme="file" />
+	}
+	
+	class ExternalMountBroadcastReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			// TODO Auto-generated method stub
+			String action = intent.getAction();
+	        if (action.equals("android.intent.action.MEDIA_MOUNTED")) {
+	            // react to event
+	        	//TODO!!!
+	        }
+		}
+		
+	};
+	
+	/*****************************************************************************************************/
+	private boolean setCurrentViewPerPath(String path, int currentPosition, boolean saveHistory) {
+		//TODO.
+//		int pos = gridview.getFirstVisiblePosition(); 
+//		gridview.smoothScrollToPosition(currentPosition);
+		
+		if (path == null)
+			return false;
+
+		if (saveHistory) {
+			// 현재 화면을 History에 넣는다.
+			pushHistory(mCurrentPath, mCurrentSelectedItem);
+		}
+		
+		mCurrentPath = path;
+		List<FileListEntry> files = FileLister.getFileLists(path, false);
+		if (files == null) {
+			// 파일 존재하지 않음.. TODO
+			return false;
+		}
+		
+		Collections.sort(files, new FileSorter(getApplicationContext(), true, FileSorter.SORT_BY_NAME_ASC));
+		mFileAdapter.setList(files);
+		
+		return true;
+	}
+	
+	
+	private void backHistory() {
+		String className = "";
+		String currentName = "";
+		
+		if (mHistoryStack == null || mHistoryStack.isEmpty()){
+			return;
+		}
+		
+		HistoryNode history = mHistoryStack.peek();
+		if (history.getPath() != null && !history.getPath().equals(mCurrentPath)) {
+			
+			boolean result = setCurrentViewPerPath(history.getPath(), history.getCurrentPosition(), false);
+			if (result) mHistoryStack.pop();
+		}
+	}
+	
+	private void pushHistory(String path, int selected) {
+		
+		if (mHistoryStack == null) {
+			mHistoryStack = new Stack<HistoryNode>();
+		}
+		
+		// 마지막 History가 현재 화면과 같으면 history에 넣지 않는다.
+		HistoryNode peek = mHistoryStack.peek();
+		if (peek == null || ! peek.getPath().equals(path)) { 
+			HistoryNode currentHistory = new HistoryNode(path, selected);
+			mHistoryStack.push(currentHistory);
+		}
+	}
+	
+	private void settingMenuInitialize(View container) {
+		Button settingButton = (Button) container.findViewById(R.id.setting_copy);
+		settingButton.setOnClickListener(settingMenuClickListener);
+		
+		settingButton = (Button) container.findViewById(R.id.setting_move);
+		settingButton.setOnClickListener(settingMenuClickListener);
+		
+		settingButton = (Button) container.findViewById(R.id.setting_rename);
+		settingButton.setOnClickListener(settingMenuClickListener);
+		
+		settingButton = (Button) container.findViewById(R.id.setting_newfolder);
+		settingButton.setOnClickListener(settingMenuClickListener);
+
+		settingButton = (Button) container.findViewById(R.id.setting_sort);
+		settingButton.setOnClickListener(settingMenuClickListener);
+
+		settingButton = (Button) container.findViewById(R.id.setting_share);
+		settingButton.setOnClickListener(settingMenuClickListener);
+		
+		settingButton = (Button) container.findViewById(R.id.setting_refresh);
+		settingButton.setOnClickListener(settingMenuClickListener);
+
+		settingButton = (Button) container.findViewById(R.id.setting_setting);
+		settingButton.setOnClickListener(settingMenuClickListener);
+	}
+	
+	private void showOptionSetting() {
+		
+//		Animation slide = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.slide_down);
+//		iew.startAnimation(slide);
+	}
+	
+	private void hideOptionSetting() {
+		
+		
 	}
 }

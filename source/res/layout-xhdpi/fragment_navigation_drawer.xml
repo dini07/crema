@@ -2,84 +2,113 @@
     	xmlns:treeView="http://schemas.android.com/apk/res/com.cremamobile.filemanager"
 	android:orientation="vertical" 
 	android:layout_width="fill_parent" 
-	android:layout_height="fill_parent">
-	<LinearLayout 
+	android:layout_height="fill_parent"
+	android:background="@color/color_drawer_background">
+    <include android:id="@+id/layout_storage_select"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        layout="@layout/storage_select"/>
+    <FrameLayout
+        android:id="@+id/frame_tree"
+		android:layout_width="fill_parent" 
+		android:layout_height="fill_parent"
+		android:layout_weight="1">
+		<com.cremamobile.filemanager.treeview.TreeViewList
+		    android:id="@+id/directory_internal_treeview"
+		    android:background="@color/color_listview_background"
+		    android:layout_width="fill_parent"
+			android:layout_height="fill_parent"
+			android:layout_weight="1"
+			android:dividerHeight="1dp"
+			android:divider="@color/color_listview_divider"
+			treeView.indentWidth="15dp"
+			treeView:indicator_gravity="right|center_vertical"
+			treeView:src_indicator_collapsed="@drawable/cross_01"
+			treeView:src_indicator_expanded="@drawable/minus_01"
+			treeView:src_directory_collapsed="@drawable/folder_02"
+			treeView:src_directory_expanded="@drawable/folder_02"
+			treeView:src_root_collapsed="@drawable/folder_02"
+			treeView:src_root_expanded="@drawable/folder_02"
+			android:scrollbars="vertical"
+			android:smoothScrollbar="true"/>
+		<com.cremamobile.filemanager.treeview.TreeViewList
+		    android:id="@+id/directory_external_treeview"
+		    android:background="@color/color_listview_background"
+		    android:layout_width="fill_parent"
+			android:layout_height="fill_parent"
+			android:layout_weight="1"
+			android:dividerHeight="1dp"
+			android:divider="@color/color_listview_divider"
+			treeView.indentWidth="15dp"
+			treeView:indicator_gravity="right|center_vertical"
+			treeView:src_indicator_collapsed="@drawable/cross_01"
+			treeView:src_indicator_expanded="@drawable/minus_01"
+			treeView:src_directory_collapsed="@drawable/folder_02"
+			treeView:src_directory_expanded="@drawable/folder_02"
+			treeView:src_root_collapsed="@drawable/folder_02"
+			treeView:src_root_expanded="@drawable/folder_02"
+			android:scrollbars="vertical"
+			android:smoothScrollbar="true"/>
+		<ListView 
+		    android:id="@+id/directory_favorite_listview"
+		    android:background="@color/color_listview_background"
+		    android:layout_width="fill_parent"
+			android:layout_height="fill_parent"
+			android:layout_weight="1"
+			android:dividerHeight="1dp"
+			android:divider="@color/color_listview_divider"
+			android:scrollbars="vertical"
+			android:smoothScrollbar="true"/>
+	</FrameLayout>
+	<LinearLayout
+	    android:id="@+id/layout_sizeinfo"
 	    android:layout_width="fill_parent"
-	    android:layout_height="45dp"
-	    android:layout_gravity="center"
-	    android:orientation="horizontal">
-	    <ImageView 
-	     	android:src="@drawable/phone_01"
-	        android:id="@+id/storage_device"
-	        android:layout_width="fill_parent"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-	        android:layout_gravity="center"/>
-	    <ImageView 
-	        android:src="@drawable/memorycard_01"
-	        android:id="@+id/storage_extend"
-	        android:layout_width="fill_parent"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-	        android:layout_gravity="center"/>
-	    <ImageView 
-	        android:src="@drawable/star_01"
-	        android:id="@+id/favorite"
-	        android:layout_width="fill_parent"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-	        android:layout_gravity="center"/>
-	</LinearLayout>
-    
-	<com.cremamobile.filemanager.treeview.TreeViewList
-	    android:id="@+id/directory_treeview"
-	    android:background="@color/color_listview_background"
-	    android:layout_width="fill_parent"
-		android:layout_height="0dp"
-		android:layout_weight="1"
-		treeView:indent_width="15dp"
-		treeView:indicator_gravity="right|center_vertical"
-		android:scrollbars="vertical"
-		android:smoothScrollbar="true"/>
-	<LinearLayout 
-	    android:layout_width="fill_parent"
-	    android:paddingLeft="15dp"
-	    android:paddingRight="15dp"
-	    android:layout_height="45dp"
+	    android:layout_height="50dp"
+		android:paddingRight="15dp"
+		android:paddingLeft="15dp"
 	    android:layout_gravity="bottom"
-	    android:background="@color/color_drawer_background"
-	    android:orientation="horizontal">
-	    <TextView android:id="@+id/total_size"
-	        android:layout_width="fill_parent"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-	        android:textAppearance="?android:attr/textAppearanceSmall"
-	        android:textColor="@color/color_drawer_total_size_text"
-	        android:text="@string/total_size"
-	        android:layout_gravity="left"/>
-	    <TextView android:id="@+id/use_size"
-	        android:layout_width="fill_parent"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-	        android:textAppearance="?android:attr/textAppearanceSmall"
-	        android:textColor="@color/color_drawer_use_size_text"
-	        android:text="@string/use_size"
-	        android:gravity="right"
-	        android:layout_gravity="right"/>
+	    android:orientation="vertical"
+	    android:background="@color/color_drawer_storage_info_background">
+		<LinearLayout 
+		    android:layout_width="fill_parent"
+		    android:paddingLeft="15dp"
+		    android:paddingRight="15dp"
+		    android:layout_height="35dp"
+		    android:layout_gravity="bottom"
+		    android:orientation="horizontal">
+		    <TextView android:id="@+id/total_size"
+		        android:layout_width="fill_parent"
+		        android:layout_height="wrap_content"
+		        android:layout_weight="1"
+		        android:textAppearance="?android:attr/textAppearanceSmall"
+		        android:textColor="@color/color_drawer_total_size_text"
+		        android:text="@string/total"
+		        android:layout_gravity="left|bottom"/>
+		    <TextView android:id="@+id/use_size"
+		        android:layout_width="fill_parent"
+		        android:layout_height="wrap_content"
+		        android:layout_weight="1"
+		        android:textAppearance="?android:attr/textAppearanceSmall"
+		        android:textColor="@color/color_drawer_use_size_text"
+		        android:text="@string/free_space"
+		        android:gravity="right"
+		        android:layout_gravity="right|bottom"/>
+		</LinearLayout>
+		<FrameLayout
+		    android:layout_marginTop="15dp"
+		    android:layout_marginBottom="15dp"
+		    android:layout_width="fill_parent"
+		    android:layout_height="10dp"
+		    android:id="@+id/progress_framlayout"
+		    android:background="@color/color_storage_progress_background">
+		    <ImageView android:id="@+id/size_progress"
+		        android:layout_width="fill_parent"
+		        android:layout_height="fill_parent"
+		        android:layout_gravity="center_vertical|left"
+		        android:scaleType="centerCrop"
+		        android:src="@drawable/line_01"/>
+		</FrameLayout>
 	</LinearLayout>
-	<LinearLayout 
-	    android:layout_width="fill_parent"
-	    android:layout_height="20dp"
-	    android:paddingLeft="15dp"
-	    android:paddingRight="15dp"
-	    android:background="@color/color_drawer_background"
-	    android:orientation="vertical">
-	    <ImageView android:id="@+id/size_progress"
-	        android:layout_width="fill_parent"
-	        android:layout_height="20dp"
-	        android:src="@drawable/line_01"/>
-	</LinearLayout>
-		
 </LinearLayout>
 
 <!-- ListView xmlns:android="http://schemas.android.com/apk/res/android"

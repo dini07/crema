@@ -22,8 +22,10 @@ public class FileSorter implements Comparator<FileListEntry> {
 	private int	sortField;
 	private int dir;
 		
-	public FileSorter(Context context){
+	public FileSorter(Context context, boolean isDirTop, int sortFiled){
 		this.context = context;
+		this.dirOnTop = isDirTop;
+		this.sortField = sortField;
 	}
 	
 	public void setDirOnTop(boolean isTop) {

@@ -87,47 +87,47 @@ public class FileUtils {
 		return null;
 	}
 	
-	public static String getTotalInternalMemorySize() {
+	public static long getTotalInternalMemorySize() {
 		File path = Environment.getDataDirectory();
         StatFs stat = new StatFs(path.getPath());
         long blockSize = stat.getBlockSize();
         long totalBlocks = stat.getBlockCount();
 
-        return formatSize(totalBlocks * blockSize);
+        return totalBlocks * blockSize;
 	}
 	
-	public static String getAvaiableInternalMemorySize() {
+	public static long getAvaiableInternalMemorySize() {
 		File path = Environment.getDataDirectory();
         StatFs stat = new StatFs(path.getPath());
         long blockSize = stat.getBlockSize();
         long availableBlocks = stat.getAvailableBlocks();
 
-        return formatSize(availableBlocks * blockSize);
+        return availableBlocks * blockSize;
 
 	}
 	
-	public static String getTotalExternalMemorySize() {
+	public static long getTotalExternalMemorySize() {
 		if (isStorage(true) == true) {
             File path = Environment.getExternalStorageDirectory();
             StatFs stat = new StatFs(path.getPath());
             long blockSize = stat.getBlockSize();
             long totalBlocks = stat.getBlockCount();
 
-            return formatSize(totalBlocks * blockSize);
+            return totalBlocks * blockSize;
        } else {
-            return formatSize(-1);
+            return -1;
        }
 	}
 	
-	public static String getAvaiableExternalMemorySize() {
+	public static long getAvaiableExternalMemorySize() {
 		if (isStorage(true) == true) {
             File path = Environment.getExternalStorageDirectory();
             StatFs stat = new StatFs(path.getPath());
             long blockSize = stat.getBlockSize();
             long availableBlocks = stat.getAvailableBlocks();
-            return formatSize(availableBlocks * blockSize);
+            return availableBlocks * blockSize;
         } else {
-            return formatSize(-1);
+            return -1;
         }
 	}
 	
@@ -135,19 +135,20 @@ public class FileUtils {
     public static String formatSize(long size) {
          String suffix = null;
  
-         if (size >= 1024) {
+         long calcuSize = size;
+         if (calcuSize >= 1024) {
              suffix = "KB";
-             size /= 1024;
-             if (size >= 1024) {
+             calcuSize /= 1024;
+             if (calcuSize >= 1024) {
                   suffix = "MB";
-                  size /= 1024;
+                  calcuSize /= 1024;
              }
-             if (size >= 1024) {
+             if (calcuSize >= 1024) {
                  suffix = "GB";
-                 size /= 1024;
+                 calcuSize /= 1024;
             }
         }
-        StringBuilder resultBuffer = new StringBuilder(Long.toString(size));
+        StringBuilder resultBuffer = new StringBuilder(Long.toString(calcuSize));
  
         int commaOffset = resultBuffer.length() - 3;
         while (commaOffset > 0) {

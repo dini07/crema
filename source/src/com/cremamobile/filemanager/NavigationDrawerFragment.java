@@ -1,10 +1,19 @@
 package com.cremamobile.filemanager;
 
 import java.io.File;
+
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.cremamobile.filemanager.device.Device;
+import com.cremamobile.filemanager.device.DeviceUtils;
+import com.cremamobile.filemanager.device.Size;
+import com.cremamobile.filemanager.device.StorageUtil;
+import com.cremamobile.filemanager.device.StorageUtil.StorageInfo;
+import com.cremamobile.filemanager.file.DeviceFileEntry;
+import com.cremamobile.filemanager.file.DirFileEntry;
 import com.cremamobile.filemanager.file.FileListEntry;
 import com.cremamobile.filemanager.file.FileLister;
 import com.cremamobile.filemanager.file.FileUtils;
@@ -18,6 +27,7 @@ import com.cremamobile.filemanager.treeview.TreeViewList;
 import com.cremamobile.filemanager.utils.CLog;
 
 import com.cremamobile.filemanager.R;
+
 import android.support.v7.app.ActionBarActivity;
 import android.app.Activity;
 import android.support.v7.app.ActionBar;
@@ -35,12 +45,16 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,7 +66,6 @@ import android.widget.Toast;
  * implemented here.
  */
 public class NavigationDrawerFragment extends Fragment {
-
 	/**
 	 * Remember the position of the selected item.
 	 */
@@ -78,57 +91,106 @@ public class NavigationDrawerFragment extends Fragment {
 	//private ListView mDrawerListView;
 	private View mFragmentContainerView;
 
-	private int mCurrentSelectedPosition = 0;
 	private boolean mFromSavedInstanceState;
 	private boolean mUserLearnedDrawer;
 
     private final Set<Long> selected = new HashSet<Long>();
 
     private View		containerView;
-    private TreeViewList mDirectoryTreeView;
+
+    // Root 개수
+    private List<FileListEntry> mDevices;
+    
+    /********************************************************************************************/
+    // Storage Select 영역
+    private View mButtonParentView;
+    private ImageView	mInternalStorageButton;
+    private ImageView	mExternalStorageButton;
+    private ImageView	mFavoriteButton;
+    
+    private long mCurentSelectedFavoriteID;
+    
+    /********************************************************************************************/
+    // TreeListView 영역 
+    private static NavigationDrawerDirectoryTree mTreeInternal = new NavigationDrawerDirectoryTree();
+    private static NavigationDrawerDirectoryTree mTreeExternal = new NavigationDrawerDirectoryTree();
+    private static NavigationDrawerFavoriteTree mTreeFavorite = new NavigationDrawerFavoriteTree();
+    private static NavigationDrawerTreeHelper mCurrentTree;
+
+    private static DeviceFileEntry mInternalRoot;
+    private static List<DeviceFileEntry> mExternalRoot;
+    private static List<File> mFavoriteList;
+
+    /********************************************************************************************/
+    // Size View 영역 
+    private View	mLayoutSizeInfo;
     private TextView mAvailableSizeTextView;
     private TextView mTotalSizeTextView;
+    private View progressFrameLayout;
     private ImageView mSizeProgressImageView;
-
-    private TreeStateManager<Long> manager = null;
-    private TreeViewAdapter treeViewAdapter;
-    private boolean collapsible;
-    private int	treeLevel = 1;
 
     TreeViewAdapterParent<Long> treeListParent = new TreeViewAdapterParent<Long>() {
 		@Override
-		public void updateChildList(Long parent, String path) {
+		public void updateChildList(Long parent, String path, boolean searchChildDir) {
 			// TODO Auto-generated method stub
-			updateTreeBuilder(parent, path);
+			// 선택한 ID를 표시한다.
+			mCurrentTree.currentSelectedID = parent;
+			
+			if (mCurrentTree.tree_type == NavigationDrawerTreeHelper.TREE_TYPE_FAVORITE) {
+				// 즐겨찾기를 눌렀을 경우에는 tree를 닫고 해당 Directory 내용을 표시하도록 메인뷰에게 알린다.
+				if (mDrawerLayout != null) {
+					mDrawerLayout.closeDrawer(mFragmentContainerView);
+				}
+				mCallbacks.onNavigationDrawerItemSelected(parent, path);
+			} else {
+				// 디렉토리를 눌렀을 경우에는 해당 디렉토리 하위 디렉토리가 있으면 expand하고 해당 Directory내용을 표시하도록 메인뷰에 알린다.
+				// tree를 닫지 않는다. 사용자가 계속 tree 구조를 navigiation할 수 있도록
+				NavigationDrawerDirectoryTree dirTree = (NavigationDrawerDirectoryTree)mCurrentTree;
+				if (mCallbacks != null) {
+					// TODO. select한  path를 내보
+					mCallbacks.onNavigationDrawerItemSelected(parent, path);
+				}
+	
+				if (searchChildDir) {
+					TreeBuilder<Long> treeBuilder = dirTree.manager.getTreeBuilder();
+					updateTreeBuilder(treeBuilder, parent, path);
+				}
+			}
 		}    	
     };
     
-    public void updateTreeBuilder(Long parent, String path) {
-    	TreeBuilder<Long> treeBuilder = manager.getTreeBuilder();
-    	
-    	List<FileListEntry> files = FileLister.getDirectoryLists(new File(path), 2);
+    public void updateTreeBuilder(TreeBuilder<Long> treeBuilder, Long parent, String path) {
+    	List<FileListEntry> files = FileLister.getDirectoryLists(new File(path), false);
 		if (files != null && files.size() > 0) {
 			long i = treeBuilder.getLastAddedId();
 			for (FileListEntry file : files) {
 				CLog.d(this, "count:" + i + ", file["+file.toString()+"]");
-				
-				treeBuilder.addRelation(parent, ++i, file.getAbsolutePath(), file.getName(), false);
-				
-				long currentId = i;
-				if (file.getChildFileNumber() > 0) {
-					List<FileListEntry> childFiles = file.getChildLists();
-					for (FileListEntry childFile : childFiles) {
-						CLog.d(this, "  - child.. count:" + i + ", file["+file.toString()+"]");
-						treeBuilder.addRelation(currentId, ++i, childFile.getAbsolutePath(), childFile.getName(), false);
-					}
-				}
-				
-				treeViewAdapter.collapse(currentId);
-				
+				if (file.getHidden())
+					continue;
+				DirFileEntry dir = (DirFileEntry) file;
+				treeBuilder.addRelation(parent, ++i, dir.getAbsolutePath(), dir.getName(), false, dir.isNeedSearchChild());
 			}
-			treeViewAdapter.collapse(parent);
 		}
     }
+
+    OnClickListener	storageButtonClickListener = new OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			// TODO Auto-generated method stub
+			if (v == mFavoriteButton) {
+				selectTree(mTreeFavorite);
+			} else if (v == mInternalStorageButton) {
+				selectTree(mTreeInternal);
+			} else if (v == mExternalStorageButton) {
+				mCurrentTree = mTreeExternal;
+				selectTree(mTreeExternal);
+			}
+		}
+    	
+    };
+    
+
     
 	public NavigationDrawerFragment() {
 	}
@@ -144,9 +206,11 @@ public class NavigationDrawerFragment extends Fragment {
 				.getDefaultSharedPreferences(getActivity());
 		mUserLearnedDrawer = sp.getBoolean(PREF_USER_LEARNED_DRAWER, false);
 
-
+		// 최초에 디바이스 정보를 가져온다.
+		getDevices();
+		
 		// Select either the default item (0) or the last selected item.
-		selectItem(mCurrentSelectedPosition);
+//		selectItem(mCurrentSelectedPosition);
 	}
 
 	@Override
@@ -179,83 +243,235 @@ public class NavigationDrawerFragment extends Fragment {
 //						getString(R.string.title_section3), }));
 //		mDrawerListView.setItemChecked(mCurrentSelectedPosition, true);
 //		return mDrawerListView;
+
+		// StorageButton create
+		View view = inflater.inflate(R.layout.fragment_navigation_drawer, container, false);
+        mInternalStorageButton = (ImageView) view.findViewById(R.id.storage_device);
+        mInternalStorageButton.setOnClickListener(storageButtonClickListener);
+        mExternalStorageButton = (ImageView) view.findViewById(R.id.storage_extend);
+        mExternalStorageButton.setOnClickListener(storageButtonClickListener);
+        mFavoriteButton = (ImageView) view.findViewById(R.id.favorite);
+        mFavoriteButton.setOnClickListener(storageButtonClickListener);
+		
+        setStorageButtonView(view);
+		
+        // tree view create
+        mTreeInternal.listView = (TreeViewList) view.findViewById(R.id.directory_internal_treeview);
+        mTreeExternal.listView = (TreeViewList) view.findViewById(R.id.directory_external_treeview);
+        mTreeFavorite.listView = (ListView) view.findViewById(R.id.directory_favorite_listview);
+        
 		// TODO...
 		boolean newCollapsible;
 		if (savedInstanceState != null) {
-			mCurrentSelectedPosition = savedInstanceState
-					.getInt(STATE_SELECTED_POSITION);
+//			mCurrentSelectedPosition = savedInstanceState
+//					.getInt(STATE_SELECTED_POSITION);
 			mFromSavedInstanceState = true;
 
-            manager = (TreeStateManager<Long>) savedInstanceState.getSerializable("treeManager");
-            if (manager == null) {
-                manager = new InMemoryTreeStateManager<Long>();
-                manager.setTreeBuilder(new TreeBuilder<Long>(manager));
-            }
-            newCollapsible = savedInstanceState.getBoolean("collapsible");
-            treeLevel = savedInstanceState.getInt("treeLevel");
-		} else {
-            manager = new InMemoryTreeStateManager<Long>();
-            manager.setTreeBuilder(new TreeBuilder<Long>(manager));
-            
-    		setDirectoryListItem(manager.getTreeBuilder());
-    		manager.collapseChildren(null);	//전부 닫는다.
-    		
-            CLog.d(this, manager.toString());
-            newCollapsible = true;
+            mTreeInternal.manager = (TreeStateManager<Long>) savedInstanceState.getSerializable("internal_treeManager");
+            mTreeExternal.manager = (TreeStateManager<Long>) savedInstanceState.getSerializable("external_treeManager");
+            mTreeInternal.treeLevel = savedInstanceState.getInt("internal_treeLevel");
+            mTreeExternal.treeLevel = savedInstanceState.getInt("external_treeLevel");
 		}
-
-		View view = inflater.inflate(R.layout.fragment_navigation_drawer, container, false);
-
-		mDirectoryTreeView = (TreeViewList) view.findViewById(R.id.directory_treeview);
-		mSizeProgressImageView = (ImageView) view.findViewById(R.id.size_progress);
-
-		mTotalSizeTextView = (TextView) view.findViewById(R.id.total_size);
-		mAvailableSizeTextView = (TextView) view.findViewById(R.id.use_size);
 		
-        treeViewAdapter = new TreeViewAdapter(getActivity(), treeListParent, manager, treeLevel);
-        mDirectoryTreeView.setAdapter(treeViewAdapter);
-        setCollapsible(newCollapsible);
-        registerForContextMenu(mDirectoryTreeView);
+        if (mTreeInternal.manager == null || mTreeExternal.manager == null) {
+			mTreeInternal.createTreeManager(getActivity(), treeListParent, NavigationDrawerTreeHelper.TREE_TYPE_INTERNAL);
+			mTreeExternal.createTreeManager(getActivity(), treeListParent, NavigationDrawerTreeHelper.TREE_TYPE_EXTERNAL);
+        }
 
-        setStorageSize();
+        if (mTreeFavorite.listAdapter == null) {
+        	mTreeFavorite.createTreeManager(getActivity(), treeListParent, NavigationDrawerTreeHelper.TREE_TYPE_FAVORITE);
+        }
+        
+        // 디바이스 정보를 가져와서 Root에 넣는다.
+		setRootDeviceInfoToTree();
+        
+        if (mCurrentTree == null) {
+        	mCurrentTree = mTreeInternal;
+        }
+        
+		
+		// 사이즈 정보를
+        mLayoutSizeInfo = view.findViewById(R.id.layout_sizeinfo);
+		mTotalSizeTextView = (TextView) mLayoutSizeInfo.findViewById(R.id.total_size);
+		mAvailableSizeTextView = (TextView) mLayoutSizeInfo.findViewById(R.id.use_size);
+		mSizeProgressImageView = (ImageView) mLayoutSizeInfo.findViewById(R.id.size_progress);
+		progressFrameLayout = mLayoutSizeInfo.findViewById(R.id.progress_framlayout);
+		
+//        treeViewAdapter = new TreeViewAdapter(getActivity(), treeListParent, manager, treeLevel);
+//        mDirectoryTreeView.setAdapter(treeViewAdapter);
+//        registerForContextMenu(mDirectoryTreeView);
+
+        // Device를 선택해서 인자로 넣는다.
+		selectTree(mCurrentTree);
+//        setStorageSize(mCurrentTree.root);
 		setSizeView();
 		return view;
 	}
 	
-	private void setStorageSize() {
-		mTotalSizeTextView.setText(getString(R.string.total_size) + " " +FileUtils.getTotalExternalMemorySize());
-		mAvailableSizeTextView.setText(getString(R.string.use_size) +  " " + FileUtils.getAvaiableExternalMemorySize());
+	/**
+	 * 내부 저장소/외부 저장소 선택에 따라 Treeview/storage size info view를 교체한다.
+	 * @param treeHelper
+	 */
+	private void selectTree(NavigationDrawerTreeHelper treeHelper) {
+
+		mCurrentTree = treeHelper;
+
+		if (mCurrentTree.tree_type == NavigationDrawerTreeHelper.TREE_TYPE_FAVORITE) {
+			mTreeInternal.listView.setVisibility(View.GONE);
+			mTreeExternal.listView.setVisibility(View.GONE);
+			mTreeFavorite.listView.setVisibility(View.VISIBLE);
+			
+			mLayoutSizeInfo.setVisibility(View.GONE);
+		} else {
+			NavigationDrawerDirectoryTree dirTree = (NavigationDrawerDirectoryTree) mCurrentTree;
+			
+			mTreeFavorite.listView.setVisibility(View.GONE);
+			// 디바이스 사이즈 정보를 표시한다.
+			mLayoutSizeInfo.setVisibility(View.VISIBLE);
+			setStorageSize(dirTree.root);
+			
+			if (dirTree.tree_type == NavigationDrawerTreeHelper.TREE_TYPE_INTERNAL) {
+				// 내부 저장소일 경우, 내부 저장소 directory tree를 보인다. 
+				mTreeInternal.listView.setVisibility(View.VISIBLE);
+				mTreeExternal.listView.setVisibility(View.GONE);
+			} else {
+				// 외부 저장소일 경우, 내부 저장소 directory tree를 보인다. 
+				mTreeInternal.listView.setVisibility(View.GONE);
+				mTreeExternal.listView.setVisibility(View.VISIBLE);
+			}
+		}
 	}
 	
-	private void setDirectoryListItem(TreeBuilder<Long> treeBuilder) {
+	private void setStorageButtonView(View frame) {
+		// 버튼 정보들..
+		if (mButtonParentView == null)
+			mButtonParentView = frame.findViewById(R.id.layout_storage_select);
 		
-//	    int[] DEMO_NODES = new int[] { 0, 0, 1, 1, 1, 2, 2, 1,
-//            1, 2, 1, 0, 0, 0, 1, 2, 3, 2, 0, 0, 1, 2, 0, 1, 2, 0, 1 };
-//	    int LEVEL_NUMBER = 4;
-
-		FileLister.readVoldFile(getActivity().getApplicationContext());
-		FileLister.testAndCleanList();
-		FileLister.setProperties();
-		
-		List<FileListEntry> files = FileLister.getSDCardDirectoryLists(2);
-		if (files != null && files.size() > 0) {
-			long i = 0;
-			for (FileListEntry file : files) {
-				CLog.d(this, "count:" + i + ", file["+file.toString()+"]");
-				treeBuilder.sequentiallyAddNextNode(i++, file.getAbsolutePath(), file.getName(), false, 0);
-				if (file.getChildFileNumber() > 0) {
-					List<FileListEntry> childFiles = file.getChildLists();
-					for (FileListEntry childFile : childFiles) {
-						CLog.d(this, "  - child.. count:" + i + ", file["+file.toString()+"]");
-						treeBuilder.sequentiallyAddNextNode(i++, childFile.getAbsolutePath(), childFile.getName(), false, 1);
-					}
-				}
-			}
-			
-			// addNodeToParentOneLevelDown
+		// device 정보에 따라  button 을 생성한다.
+		if (mInternalRoot  == null) {
+			getDevices();
 		}
 		
-		this.treeLevel = 1;
+		View extView = frame.findViewById(R.id.storage_extend);
+		if (mExternalRoot == null || mExternalRoot.size() <= 0) {
+			//외장 메모리가 하나 이상 있다는 의미..
+			extView.setVisibility(View.GONE);
+		} else {
+			extView.setVisibility(View.VISIBLE);
+		}
+	}
+	
+	private void getDevices() {
+		mInternalRoot = null;
+		mExternalRoot = null;
+	
+		// 1개의 Internal, 여러개의 Extenral을 리턴한다.
+		List<FileListEntry> devices = FileLister.getDevices(getActivity().getApplicationContext());
+		
+		if (devices == null)
+			return;
+		
+		if (devices.size() > 1)
+			mExternalRoot = new ArrayList<DeviceFileEntry>();
+		
+		for (FileListEntry item : devices) {
+			DeviceFileEntry device = (DeviceFileEntry) item;
+			if (! device.isExternalDevice() ) {
+				mInternalRoot = device;
+			} else {
+				mExternalRoot.add(device);
+			}
+		}
+
+	}
+	
+	private void setRootDeviceInfoToTree() {
+		TreeBuilder<Long> treeBuilder;
+		
+		if (mInternalRoot == null) {
+			// 내부 저장소가 없다면 getDevice() 를 한번 더 호출해 확인한다. 
+			getDevices();
+		}
+		
+		if (mInternalRoot == null)
+			return;
+		
+		// Tree  ID ->  must be Unique!!
+		long id = 0;
+		
+		//========================================================
+		// 내부 저장소 Tree 화
+		treeBuilder = mTreeInternal.manager.getTreeBuilder();
+		
+		// 내부 저장소일 경우는 1 depth 디렉토리 리스트를 최초로 넣는다.
+    	List<FileListEntry> childDir = FileLister.getDirectoryLists(mInternalRoot.getPath(), false);
+		if (childDir != null && childDir.size() > 0) {
+			for (FileListEntry dir : childDir) {
+				CLog.d(this, "count:" + id + ", file["+dir.toString()+"]");
+				if (dir.getHidden())
+					continue;
+
+				DirFileEntry dirInfo = (DirFileEntry) dir;
+				treeBuilder.sequentiallyAddNextNode(id++, dirInfo.getAbsolutePath(), dirInfo.getName(), false, dirInfo.isNeedSearchChild(), 0);
+			}
+		}
+		mTreeInternal.root = mInternalRoot.getPath();
+		mTreeInternal.treeLevel = 1;
+
+		//========================================================
+		// 외부 저장소 Tree 화
+		// 외부 저장소가 1 개일 경우에는 내부 저장소와 같은 처리
+		// 2개 이상일 경우는 Root node부터 넣는다.
+
+		if (mExternalRoot == null)
+			return;
+		
+		treeBuilder = mTreeExternal.manager.getTreeBuilder();
+			
+		long parentId = 0;
+		
+		for (DeviceFileEntry extFile : mExternalRoot) {
+			if (parentId == 0)
+				parentId = id;
+			//외부 저자서일 경우는 Device 정보를 root node로 넣는다.
+			treeBuilder.sequentiallyAddNextNode(id++, extFile.getAbsolutePath(), extFile.getName(), true, true, 0);
+		}
+
+		// 현재는 첫번째 외부 저장소를 임의로 선택.. 
+		mTreeExternal.root = mExternalRoot.get(0).getPath();
+		// TODO. 사용자가 이전에 선택한 외부저장소를 펼쳐야함.
+		
+    	List<FileListEntry> childDirEx = FileLister.getDirectoryLists(mExternalRoot.get(0).getPath(), false);
+		if (childDirEx != null && childDirEx.size() > 0) {
+			for (FileListEntry dir : childDirEx) {
+				CLog.d(this, "count:" + id + ", file["+dir.toString()+"]");
+				if (dir.getHidden())
+					continue;
+
+				DirFileEntry dirInfo = (DirFileEntry) dir;
+				treeBuilder.addRelation(parentId, id++, dirInfo.getAbsolutePath(), dirInfo.getName(), false, dirInfo.isNeedSearchChild());
+			}
+		}
+		
+		mTreeExternal.treeLevel = 2;
+	}
+	
+	private void setStorageSize(File path) {
+		
+		Size deviceSize = Size.getSpace(path);
+		
+//		long totalSize = FileUtils.getTotalExternalMemorySize();
+//		long availSize = FileUtils.getAvaiableExternalMemorySize();
+		
+		mTotalSizeTextView.setText(getString(R.string.total_size) + " " +FileUtils.formatSize(deviceSize.getTotalSize()));
+		mAvailableSizeTextView.setText(getString(R.string.use_size) +  " " + FileUtils.formatSize(deviceSize.getSpaceSize()));
+
+		int usePercent = deviceSize.getPercentage();
+		int totalWidth = progressFrameLayout.getWidth();
+		FrameLayout.LayoutParams lp= (FrameLayout.LayoutParams)mSizeProgressImageView.getLayoutParams();
+		int percentWidth= Math.max(1, (int)(totalWidth*usePercent/100));
+		lp.width=percentWidth;
+		mSizeProgressImageView.setLayoutParams(lp);
 	}
 	
 	private void setSizeView() {
@@ -357,7 +573,7 @@ public class NavigationDrawerFragment extends Fragment {
 	}
 
 	private void selectItem(int position) {
-		mCurrentSelectedPosition = position;
+//		mCurrentSelectedPosition = position;
 		//TODO.
 //		if (mDrawerListView != null) {
 //			mDrawerListView.setItemChecked(position, true);
@@ -366,7 +582,8 @@ public class NavigationDrawerFragment extends Fragment {
 			mDrawerLayout.closeDrawer(mFragmentContainerView);
 		}
 		if (mCallbacks != null) {
-			mCallbacks.onNavigationDrawerItemSelected(position);
+			// TODO. select한  path를 내보
+			mCallbacks.onNavigationDrawerItemSelected(position, null);
 		}
 	}
 
@@ -389,11 +606,15 @@ public class NavigationDrawerFragment extends Fragment {
 
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
-		outState.putInt(STATE_SELECTED_POSITION, mCurrentSelectedPosition);
+//		outState.putInt(STATE_SELECTED_POSITION, mCurrentSelectedPosition);
 		
-        outState.putSerializable("treeManager", manager);
-        outState.putBoolean("collapsible", this.collapsible);
-        outState.putInt("treeLevel", this.treeLevel);
+        outState.putSerializable("treeManager_internal", mTreeInternal.manager);
+        outState.putSerializable("treeManager_external", mTreeExternal.manager);
+        
+        outState.putInt("treeLevel_internal", mTreeInternal.treeLevel);
+        outState.putInt("treeLevel_external", mTreeExternal.treeLevel);
+        
+        outState.putInt("selected_tree", mTreeExternal.treeLevel);
         
         super.onSaveInstanceState(outState);
 	}
@@ -424,11 +645,11 @@ public class NavigationDrawerFragment extends Fragment {
 			return true;
 		}
 
-		if (item.getItemId() == R.id.action_example) {
-			Toast.makeText(getActivity(), "Example action.", Toast.LENGTH_SHORT)
-					.show();
-			return true;
-		}
+//		if (item.getItemId() == R.id.action_example) {
+//			Toast.makeText(getActivity(), "Example action.", Toast.LENGTH_SHORT)
+//					.show();
+//			return true;
+//		}
 
 		return super.onOptionsItemSelected(item);
 	}
@@ -457,11 +678,6 @@ public class NavigationDrawerFragment extends Fragment {
 		/**
 		 * Called when an item in the navigation drawer is selected.
 		 */
-		void onNavigationDrawerItemSelected(int position);
+		void onNavigationDrawerItemSelected(long id, String path);
 	}
-	
-    protected final void setCollapsible(final boolean newCollapsible) {
-        this.collapsible = newCollapsible;
-        mDirectoryTreeView.setCollapsible(this.collapsible);
-    }
 }

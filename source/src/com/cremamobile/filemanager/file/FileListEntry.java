@@ -4,43 +4,19 @@ import java.io.File;
 import java.util.Date;
 import java.util.List;
 
-public class FileListEntry {
-
-	private boolean isDir = false;
-	private File path;
-	private String absolutePath;
-	private String name;
-	private String ext;
-	private long size = 0;
-	private Date lastModified;
-
-	private int childFileNumber;
-	private List<FileListEntry> child;
-	
-	public FileListEntry(String fqpath) {
-		this.path = new File(fqpath);
-		this.isDir = FileUtils.isDir(this.path);
-		this.absolutePath = fqpath;
-		this.name = path.getName();
-		int pos = name.lastIndexOf( "." );
-		if (pos > 0) {
-			this.ext = name.substring( pos + 1 );
-		}
-	}
+public abstract class FileListEntry {
+	protected File path;
+	protected String absolutePath;
+	protected String name;
+	protected boolean hidden;
+	protected boolean selected;
 	
 	public FileListEntry(File file) {
 		this.path = file;
-		this.isDir = FileUtils.isDir(this.path);
 		this.absolutePath = path.getAbsolutePath();
 		this.name = path.getName();
-		int pos = name.lastIndexOf( "." );
-		if (pos > 0) {
-			this.ext = name.substring( pos + 1 );
-		}
 	}
 
-	public FileListEntry() {}
-	
 	public File getPath() {
 		return path;
 	}
@@ -64,44 +40,28 @@ public class FileListEntry {
 		this.name = name;
 	}
 
-	public String getExt() {
-		return ext;
-	}
-	public void setExt(String ext) {
-		this.ext = ext;
-	}
-
-	public long getSize() {
-		return size;
-	}
-	public void setSize(long size) {
-		this.size = size;
-	}
-
-	public Date getLastModified() {
-		return lastModified;
-	}
-	public void setLastModified(Date lastModified) {
-		this.lastModified = lastModified;
+	public void setHidden(boolean b) {
+		this.hidden = b;
 	}
 	
-	public boolean isDir() {
-		return isDir;
-	}
-	public void isDir(boolean up) {
-		this.isDir = up;
+	public boolean getHidden() {
+		return hidden;
 	}
 	
-	public int getChildFileNumber() {
-		return childFileNumber;
+	public boolean isSelected() {
+		return selected;
 	}
-	public List<FileListEntry> getChildLists() {
-		return this.child;
+	
+	public void setSelected(boolean b) {
+		selected = b;
 	}
-	public void setChildLists(List<FileListEntry> list) {
-		this.child = list;
-		this.childFileNumber = this.child != null ? this.child.size() : 0;
-	}
+//	public int getStorageType() {
+//		return storage_type;
+//	}
+//	
+//	public void setStorageType(int type) {
+//		this.storage_type = type;
+//	}
 	
 	@Override
 	public int hashCode() {
@@ -128,14 +88,11 @@ public class FileListEntry {
 		return true;
 	}
 	
-	@Override
-	public String toString() {
-		return "FileListEntry[file:"+this.path
-				+", name:"+this.name
-				+", ext:"+this.ext
-				+", isDir:"+this.isDir
-				+", size:"+this.size
-				+", lastModified:"+this.lastModified
-				+", childFileNumber:"+this.childFileNumber;
-	}
+	abstract public boolean isDir();
+
+	abstract public boolean isDevice();
+	
+	abstract public Date getLastModified();
+	
+	abstract public long getSize();
 }

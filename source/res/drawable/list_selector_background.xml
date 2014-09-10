@@ -40,6 +40,5 @@
 
 	<item android:alwaysDrawnWithCache="true"
 		android:drawable="@android:color/transparent" />
-	
-	
+
 </selector>

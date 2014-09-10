@@ -21,13 +21,16 @@
         <activity
             android:name=".CremaActivity"
             android:label="@string/app_name"
-  	        android:icon="@drawable/folder_01">
+  	        android:icon="@drawable/folder_01"
+  	        android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".SettingActivity"/>
+        
         <service android:name=".CremaRemoteService" android:process=":remote">
             <intent-filter>
                 <action android:name="com.cremamobile.filemanager.IRemoteService" />

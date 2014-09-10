@@ -2,11 +2,13 @@ package com.cremamobile.filemanager.treeview;
 
 import com.cremamobile.filemanager.R;
 import android.content.Context;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.AdapterView;
@@ -17,17 +19,22 @@ import android.widget.AdapterView.OnItemClickListener;
 public class TreeViewList extends ListView {
 	private static final int DEFAULT_ROOT_EXPENDED_RESOURCE = R.drawable.cross_01;
 	private static final int DEFAULT_ROOT_COLLAPSED_RESOURCE = R.drawable.minus_01;	
-    private static final int DEFAULT_COLLAPSED_RESOURCE = R.drawable.cross_01;
-    private static final int DEFAULT_EXPANDED_RESOURCE = R.drawable.minus_01;
-    private static final int DEFAULT_INDENT = 0;
+    private static final int DEFAULT_INDICATOR_COLLAPSED_RESOURCE = R.drawable.cross_01;
+    private static final int DEFAULT_INDICATOR_EXPANDED_RESOURCE = R.drawable.minus_01;
+    private static final int DEFAULT_DIRECTORY_COLLAPSED_RESOURCE = R.drawable.folder_02;
+    private static final int DEFAULT_DIRECTORY_EXPANDED_RESOURCE = R.drawable.folder_02;
+
+    private static final int DEFAULT_INDENT = 15;
     private static final int DEFAULT_GRAVITY = Gravity.LEFT
             | Gravity.CENTER_VERTICAL;
     private Drawable rootCollapsedDrawable;
-    private Drawable rootExpendedDrawable;
-    private Drawable expandedDrawable;
-    private Drawable collapsedDrawable;
-    private Drawable rowBackgroundDrawable;
+    private Drawable rootExpandedDrawable;
+    private Drawable directoryCollapsedDrawable;
+    private Drawable directoryExpandedDrawable;
+    private Drawable indicatorCollapsedDrawable;
+    private Drawable indicatorExpandedDrawable;
     private Drawable indicatorBackgroundDrawable;
+    private Drawable rowBackgroundDrawable;
     private int indentWidth = 0;
     private int indicatorGravity = 0;
     private TreeViewAdapter treeAdapter;
@@ -56,24 +63,32 @@ public class TreeViewList extends ListView {
         if (rootCollapsedDrawable == null) {
         	rootCollapsedDrawable = context.getResources().getDrawable(DEFAULT_ROOT_COLLAPSED_RESOURCE);
         }
-        rootExpendedDrawable = a.getDrawable(R.styleable.TreeViewList_src_root_expended);
-        if (rootExpendedDrawable == null) {
-        	rootExpendedDrawable = context.getResources().getDrawable(DEFAULT_ROOT_EXPENDED_RESOURCE);
+        rootExpandedDrawable = a.getDrawable(R.styleable.TreeViewList_src_root_expanded);
+        if (rootExpandedDrawable == null) {
+        	rootExpandedDrawable = context.getResources().getDrawable(DEFAULT_ROOT_EXPENDED_RESOURCE);
         }
         
-        expandedDrawable = a.getDrawable(R.styleable.TreeViewList_src_expanded);
-        if (expandedDrawable == null) {
-            expandedDrawable = context.getResources().getDrawable(
-                    DEFAULT_EXPANDED_RESOURCE);
+        directoryExpandedDrawable = a.getDrawable(R.styleable.TreeViewList_src_directory_expanded);
+        if (directoryExpandedDrawable == null) {
+        	directoryExpandedDrawable = context.getResources().getDrawable(DEFAULT_DIRECTORY_EXPANDED_RESOURCE);
         }
-        collapsedDrawable = a
-                .getDrawable(R.styleable.TreeViewList_src_collapsed);
-        if (collapsedDrawable == null) {
-            collapsedDrawable = context.getResources().getDrawable(
-                    DEFAULT_COLLAPSED_RESOURCE);
+        directoryCollapsedDrawable = a.getDrawable(R.styleable.TreeViewList_src_directory_collapsed);
+        if (directoryCollapsedDrawable == null) {
+        	directoryCollapsedDrawable = context.getResources().getDrawable(DEFAULT_DIRECTORY_COLLAPSED_RESOURCE);
         }
-        indentWidth = a.getDimensionPixelSize(
-                R.styleable.TreeViewList_indent_width, DEFAULT_INDENT);
+
+        indicatorCollapsedDrawable = a.getDrawable(R.styleable.TreeViewList_src_indicator_collapsed);
+        if (indicatorCollapsedDrawable == null) {
+        	indicatorCollapsedDrawable = context.getResources().getDrawable(DEFAULT_INDICATOR_EXPANDED_RESOURCE);
+        }
+        
+        indicatorCollapsedDrawable = a.getDrawable(R.styleable.TreeViewList_src_indicator_collapsed);
+        if (indicatorCollapsedDrawable == null) {
+        	indicatorCollapsedDrawable = context.getResources().getDrawable(DEFAULT_INDICATOR_COLLAPSED_RESOURCE);
+        }
+        
+        indentWidth = dpToPx(a.getResources(), a.getDimensionPixelSize(
+                R.styleable.TreeViewList_indent_width, DEFAULT_INDENT));
         indicatorGravity = a.getInteger(
                 R.styleable.TreeViewList_indicator_gravity, DEFAULT_GRAVITY);
         indicatorBackgroundDrawable = a
@@ -98,9 +113,11 @@ public class TreeViewList extends ListView {
 
     private void syncAdapter() {
     	treeAdapter.setRootCollapsedDrawable(rootCollapsedDrawable);
-    	treeAdapter.setRootExpendedDrawable(rootExpendedDrawable);    	
-        treeAdapter.setCollapsedDrawable(collapsedDrawable);
-        treeAdapter.setExpandedDrawable(expandedDrawable);
+    	treeAdapter.setRootExpandedDrawable(rootExpandedDrawable);    	
+        treeAdapter.setDirectoryCollapsedDrawable(directoryCollapsedDrawable);
+        treeAdapter.setDirectoryExpandedDrawable(directoryExpandedDrawable);
+        treeAdapter.setIndicatorCollapsedDrawable(indicatorCollapsedDrawable);
+        treeAdapter.setIndicatorExpandedDrawable(indicatorExpandedDrawable);
         treeAdapter.setIndicatorGravity(indicatorGravity);
         treeAdapter.setIndentWidth(indentWidth);
         treeAdapter.setIndicatorBackgroundDrawable(indicatorBackgroundDrawable);
@@ -128,17 +145,17 @@ public class TreeViewList extends ListView {
     }
 
     
-    public void setExpandedDrawable(final Drawable expandedDrawable) {
-        this.expandedDrawable = expandedDrawable;
-        syncAdapter();
-        treeAdapter.refresh();
-    }
-
-    public void setCollapsedDrawable(final Drawable collapsedDrawable) {
-        this.collapsedDrawable = collapsedDrawable;
-        syncAdapter();
-        treeAdapter.refresh();
-    }
+//    public void setExpandedDrawable(final Drawable expandedDrawable) {
+//        this.expandedDrawable = expandedDrawable;
+//        syncAdapter();
+//        treeAdapter.refresh();
+//    }
+//
+//    public void setCollapsedDrawable(final Drawable collapsedDrawable) {
+//        this.collapsedDrawable = collapsedDrawable;
+//        syncAdapter();
+//        treeAdapter.refresh();
+//    }
 
     public void setRowBackgroundDrawable(final Drawable rowBackgroundDrawable) {
         this.rowBackgroundDrawable = rowBackgroundDrawable;
@@ -177,22 +194,22 @@ public class TreeViewList extends ListView {
         treeAdapter.refresh();
     }
 
-    public Drawable getRootExpendedDrawable() {
-    	return rootExpendedDrawable;
-    }
-    
-    public Drawable getRootCollapsedDrawable() {
-    	return rootCollapsedDrawable;
-    }
-    
-    
-    public Drawable getExpandedDrawable() {
-        return expandedDrawable;
-    }
-
-    public Drawable getCollapsedDrawable() {
-        return collapsedDrawable;
-    }
+//    public Drawable getRootExpendedDrawable() {
+//    	return rootExpendedDrawable;
+//    }
+//    
+//    public Drawable getRootCollapsedDrawable() {
+//    	return rootCollapsedDrawable;
+//    }
+//    
+//    
+//    public Drawable getExpandedDrawable() {
+//        return expandedDrawable;
+//    }
+//
+//    public Drawable getCollapsedDrawable() {
+//        return collapsedDrawable;
+//    }
 
     public Drawable getRowBackgroundDrawable() {
         return rowBackgroundDrawable;
@@ -218,4 +235,7 @@ public class TreeViewList extends ListView {
         return handleTrackballPress;
     }
 
+    public int dpToPx(Resources res, int dp) {
+		return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, res.getDisplayMetrics());
+	}
 }

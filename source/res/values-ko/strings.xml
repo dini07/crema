@@ -12,4 +12,6 @@
 	
     <string name="total_size">전체</string>
     <string name="use_size">남은공간</string>
+    
+    <string name="copy">복사</string>
 </resources>

@@ -20,6 +20,6 @@
     <!-- Tree view style -->
     <style parent="@android:attr/listViewStyle" name="treeViewListStyle">
         <item name="android:background">@android:color/white</item>
-        <item name="android:divider">@drawable/divider</item>
+        <item name="android:divider">@color/color_drawer_divider</item>
     </style>
 </resources>

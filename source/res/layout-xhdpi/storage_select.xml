@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:background="@color/color_storage_background"
+    android:layout_width="fill_parent"
+    android:layout_height="60dp"
+    android:layout_gravity="center"
+    android:orientation="horizontal">
+    <ImageView 
+     	android:src="@drawable/phone_01"
+        android:id="@+id/storage_device"
+        android:layout_width="fill_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_gravity="center"
+        android:clickable="true"
+        android:gravity="center"/>
+    <ImageView 
+        android:src="@drawable/memorycard_01"
+        android:id="@+id/storage_extend"
+        android:layout_width="fill_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_gravity="center"
+        android:clickable="true"
+        android:gravity="center"/>
+    <ImageView 
+        android:src="@drawable/star_01"
+        android:id="@+id/favorite"
+        android:layout_width="fill_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_gravity="center"
+        android:clickable="true"
+        android:gravity="center"/>
+</LinearLayout>
